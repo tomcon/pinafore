@@ -1,0 +1,121 @@
+<slot></slot>
+<script>
+  import { virtualListStore } from './virtualListStore'
+  import throttle from 'lodash-es/throttle'
+  import { isFullscreen, attachFullscreenListener, detachFullscreenListener } from '../../_utils/fullscreen'
+  import { mark, stop } from '../../_utils/marks'
+  import { doubleRAF } from '../../_utils/doubleRAF'
+  import { observe } from 'svelte-extras'
+  import {
+    addScrollListener,
+    removeScrollListener,
+    getScrollContainer,
+    getOffsetHeight
+  } from '../../_utils/scrollContainer'
+  import { registerResizeListener, unregisterResizeListener } from '../../_utils/resize'
+
+  const SCROLL_EVENT_DELAY = 300
+
+  export default {
+    oncreate () {
+      mark('onCreate VirtualListContainer')
+      let {
+        realm
+      } = this.get()
+      this.store.setCurrentRealm(realm)
+      this.setupScroll()
+      this.setupFullscreen()
+      this.onResize = this.onResize.bind(this)
+      let { scrollTop } = this.store.get()
+      let scrollContainer = getScrollContainer()
+      if (scrollTop > 0) {
+        this.observe('allVisibleItemsHaveHeight', allVisibleItemsHaveHeight => {
+          console.log('allVisibleItemsHaveHeight', allVisibleItemsHaveHeight)
+          let { initializedScrollTop } = this.get()
+          if (!initializedScrollTop && allVisibleItemsHaveHeight) {
+            this.set({ 'initializedScrollTop': true })
+            requestAnimationFrame(() => {
+              mark('set scrollTop')
+              console.log('forcing scroll top to ', scrollTop)
+              scrollContainer.scrollTop = scrollTop
+              stop('set scrollTop')
+              doubleRAF(() => {
+                console.log('initialized VirtualList')
+                this.fire('initialized')
+              })
+            })
+          }
+        })
+      } else {
+        this.fire('noNeedToScroll')
+        this.observe('allVisibleItemsHaveHeight', allVisibleItemsHaveHeight => {
+          if (allVisibleItemsHaveHeight) {
+            console.log('initialized VirtualList')
+            this.fire('initialized')
+          }
+        })
+        this.onResize()
+      }
+      registerResizeListener(this.onResize)
+      stop('onCreate VirtualListContainer')
+    },
+    ondestroy () {
+      this.teardownScroll()
+      this.teardownFullscreen()
+      this.store.setCurrentRealm(null)
+      unregisterResizeListener(this.onResize)
+    },
+    store: () => virtualListStore,
+    methods: {
+      observe,
+      setupScroll () {
+        this.scrollListener = throttle(event => {
+          let { fullscreen } = this.get()
+          if (fullscreen) {
+            return
+          }
+          this.onScroll()
+        }, SCROLL_EVENT_DELAY, {
+          leading: true,
+          trailing: true
+        })
+        addScrollListener(this.scrollListener)
+      },
+      teardownScroll () {
+        removeScrollListener(this.scrollListener)
+      },
+      setupFullscreen () {
+        this.onFullscreenChange = this.onFullscreenChange.bind(this)
+        attachFullscreenListener(this.onFullscreenChange)
+      },
+      teardownFullscreen () {
+        detachFullscreenListener(this.onFullscreenChange)
+      },
+      onScroll () {
+        let { scrollTop, scrollHeight } = getScrollContainer()
+
+        doubleRAF(() => {
+          mark('onScroll -> setForRealm()')
+          this.store.setForRealm({ scrollTop, scrollHeight })
+          stop('onScroll -> setForRealm()')
+        })
+      },
+      onFullscreenChange () {
+        mark('onFullscreenChange')
+        console.log('is fullscreen? ', isFullscreen())
+        this.set({ fullscreen: isFullscreen() })
+        stop('onFullscreenChange')
+      },
+      onResize () {
+        this.store.setForRealm({
+          scrollHeight: getScrollContainer().scrollHeight,
+          offsetHeight: getOffsetHeight()
+        })
+      }
+    },
+    computed: {
+      // TODO: bug in svelte/store – the observer in oncreate() never get removed without this hack
+      allVisibleItemsHaveHeight: ({ $allVisibleItemsHaveHeight }) => $allVisibleItemsHaveHeight
+    }
+  }
+</script>

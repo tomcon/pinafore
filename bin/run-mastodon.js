@@ -14,7 +14,7 @@ const writeFile = pify(fs.writeFile.bind(fs))
 const dir = __dirname
 
 const GIT_URL = 'https://github.com/tootsuite/mastodon.git'
-const GIT_TAG = 'v2.4.0'
+const GIT_TAG = 'v2.6.5'
 
 const DB_NAME = 'pinafore_development'
 const DB_USER = 'pinafore'
@@ -43,6 +43,7 @@ async function cloneMastodon () {
   } catch (e) {
     console.log('Cloning mastodon...')
     await exec(`git clone --single-branch --branch master ${GIT_URL} "${mastodonDir}"`)
+    await exec(`git fetch origin --tags`, { cwd: mastodonDir }) // may already be cloned, e.g. in CI
     await exec(`git checkout ${GIT_TAG}`, { cwd: mastodonDir })
     await writeFile(path.join(dir, '../mastodon/.env'), envFile, 'utf8')
   }
@@ -56,24 +57,24 @@ async function setupMastodonDatabase () {
   try {
     await exec(`dropdb -h 127.0.0.1 -U ${DB_USER} -w ${DB_NAME}`, {
       cwd: mastodonDir,
-      env: Object.assign({PGPASSWORD: DB_PASS}, process.env)
+      env: Object.assign({ PGPASSWORD: DB_PASS }, process.env)
     })
   } catch (e) { /* ignore */ }
   await exec(`createdb -h 127.0.0.1 -U ${DB_USER} -w ${DB_NAME}`, {
     cwd: mastodonDir,
-    env: Object.assign({PGPASSWORD: DB_PASS}, process.env)
+    env: Object.assign({ PGPASSWORD: DB_PASS }, process.env)
   })
 
   let dumpFile = path.join(dir, '../fixtures/dump.sql')
   await exec(`psql -h 127.0.0.1 -U ${DB_USER} -w -d ${DB_NAME} -f "${dumpFile}"`, {
     cwd: mastodonDir,
-    env: Object.assign({PGPASSWORD: DB_PASS}, process.env)
+    env: Object.assign({ PGPASSWORD: DB_PASS }, process.env)
   })
 
   let tgzFile = path.join(dir, '../fixtures/system.tgz')
   let systemDir = path.join(mastodonDir, 'public/system')
   await mkdirp(systemDir)
-  await exec(`tar -xzf "${tgzFile}"`, {cwd: systemDir})
+  await exec(`tar -xzf "${tgzFile}"`, { cwd: systemDir })
 }
 
 async function runMastodon () {
@@ -95,12 +96,20 @@ async function runMastodon () {
     'yarn --pure-lockfile'
   ]
 
-  for (let cmd of cmds) {
-    console.log(cmd)
-    await exec(cmd, {cwd, env})
+  const installedFile = path.join(mastodonDir, 'installed.txt')
+  try {
+    await stat(installedFile)
+    console.log('Already installed Mastodon')
+  } catch (e) {
+    console.log('Installing Mastodon...')
+    for (let cmd of cmds) {
+      console.log(cmd)
+      await exec(cmd, { cwd, env })
+    }
+    await writeFile(installedFile, '', 'utf8')
   }
-  const promise = spawn('foreman', ['start'], {cwd, env})
-  const log = fs.createWriteStream('mastodon.log', {flags: 'a'})
+  const promise = spawn('foreman', ['start'], { cwd, env })
+  const log = fs.createWriteStream('mastodon.log', { flags: 'a' })
   childProc = promise.childProcess
   childProc.stdout.pipe(log)
   childProc.stderr.pipe(log)

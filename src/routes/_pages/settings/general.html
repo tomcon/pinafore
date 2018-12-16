@@ -1,0 +1,104 @@
+<SettingsLayout page='settings/general' label="General">
+  <h1>General Settings</h1>
+
+  <h2>Preferences</h2>
+  <form class="ui-settings" aria-label="UI settings">
+    <div class="setting-group">
+      <input type="checkbox" id="choice-mark-media-sensitive"
+             bind:checked="$markMediaAsSensitive" on:change="onChange(event)">
+      <label for="choice-mark-media-sensitive">Always mark media as sensitive</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-never-mark-media-sensitive"
+             bind:checked="$neverMarkMediaAsSensitive" on:change="onChange(event)">
+      <label for="choice-never-mark-media-sensitive">Never mark media as sensitive</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-large-inline-media"
+             bind:checked="$largeInlineMedia" on:change="onChange(event)">
+      <label for="choice-large-inline-media">Show large inline images and videos</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-disable-custom-scrollbars"
+             bind:checked="$disableCustomScrollbars" on:change="onChange(event)">
+      <label for="choice-disable-custom-scrollbars">Disable custom scrollbars</label>
+    </div>
+  </form>
+
+  <h2>Accessibility</h2>
+  <form class="ui-settings" aria-label="UI settings">
+    <div class="setting-group">
+      <input type="checkbox" id="choice-autoplay-gif"
+             bind:checked="$autoplayGifs" on:change="onChange(event)">
+      <label for="choice-autoplay-gif">Autoplay GIFs</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-reduce-motion"
+             bind:checked="$reduceMotion" on:change="onChange(event)">
+      <label for="choice-reduce-motion">Reduce motion in UI animations</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-disable-tap-on-status"
+             bind:checked="$disableTapOnStatus" on:change="onChange(event)">
+      <label for="choice-disable-tap-on-status">Disable tappable area on entire toot</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-omit-emoji-in-display-names"
+             bind:checked="$omitEmojiInDisplayNames" on:change="onChange(event)">
+      <label for="choice-omit-emoji-in-display-names">Remove emoji from user display names</label>
+    </div>
+    <div class="setting-group">
+      <input type="checkbox" id="choice-disable-long-aria-labels"
+             bind:checked="$disableLongAriaLabels" on:change="onChange(event)">
+      <label for="choice-disable-long-aria-labels">Use short article ARIA labels</label>
+    </div>
+  </form>
+
+  <h2>{themeTitle}</h2>
+  <ThemeSettings instanceName={$currentInstance} />
+</SettingsLayout>
+<style>
+  .ui-settings {
+    background: var(--form-bg);
+    border: 1px solid var(--main-border);
+    border-radius: 4px;
+    padding: 20px;
+    line-height: 2em;
+  }
+  .setting-group {
+    padding: 5px 0;
+  }
+</style>
+<script>
+  import SettingsLayout from '../../_components/settings/SettingsLayout.html'
+  import ThemeSettings from '../../_components/settings/instance/ThemeSettings.html'
+  import { store } from '../../_store/store'
+
+  export default {
+    components: {
+      SettingsLayout,
+      ThemeSettings
+    },
+    methods: {
+      onChange (event) {
+        // these two are mutually exclusive
+        let { markMediaAsSensitive, neverMarkMediaAsSensitive } = this.store.get()
+        if (markMediaAsSensitive && neverMarkMediaAsSensitive) {
+          if (event.target.id === 'choice-mark-media-sensitive') {
+            this.store.set({ neverMarkMediaAsSensitive: false })
+          } else {
+            this.store.set({ markMediaAsSensitive: false })
+          }
+        }
+
+        this.store.save()
+      }
+    },
+    store: () => store,
+    computed: {
+      themeTitle: ({ $loggedInInstancesInOrder, $currentInstance }) => (
+        $loggedInInstancesInOrder.length > 1 ? `Theme for ${$currentInstance}` : 'Theme'
+      )
+    }
+  }
+</script>

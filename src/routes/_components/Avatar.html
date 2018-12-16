@@ -1,0 +1,85 @@
+{#if error}
+<svg class={computedClass} style={svgStyle} aria-hidden="true">
+  <use xlink:href="#fa-user" />
+</svg>
+{:elseif $autoplayGifs}
+  <LazyImage
+    className={computedClass}
+    ariaHidden="true"
+    forceSize=true
+    alt=""
+    src={account.avatar}
+    {width}
+    {height}
+    on:imgLoad="set({loaded: true})"
+    on:imgLoadError="set({error: true})" />
+{:else}
+  <NonAutoplayImg
+    className={computedClass}
+    ariaHidden="true"
+    alt=""
+    src={account.avatar}
+    staticSrc={account.avatar_static}
+    {width}
+    {height}
+    {isLink}
+    on:imgLoad="set({loaded: true})"
+    on:imgLoadError="set({error: true})"
+  />
+{/if}
+<style>
+  :global(.avatar) {
+    border-radius: 4px;
+    background: var(--loading-bg);
+  }
+
+  :global(.avatar.loaded) {
+    background: none;
+  }
+
+  svg.avatar {
+    fill: var(--deemphasized-text-color);
+  }
+</style>
+<script>
+  import { store } from '../_store/store'
+  import NonAutoplayImg from './NonAutoplayImg.html'
+  import { classname } from '../_utils/classname'
+  import LazyImage from './LazyImage.html'
+
+  export default {
+    data: () => ({
+      className: void 0,
+      loaded: false,
+      error: void 0,
+      isLink: false
+    }),
+    store: () => store,
+    computed: {
+      computedClass: ({ className, loaded }) => (classname(
+        'avatar',
+        className,
+        loaded && 'loaded'
+      )),
+      width: ({ size, $isMobileSize }) => {
+        switch (size) {
+          case 'extra-small':
+            return 24
+          case 'small':
+            return 48
+          case 'big':
+            return $isMobileSize ? 80 : 100
+          case 'medium':
+          default:
+            return 64
+        }
+      },
+      height: ({ width }) => width,
+      svgStyle: ({ width, height }) => `width: ${width}px; height: ${height}px;`
+    },
+    components: {
+      NonAutoplayImg,
+      LazyImage
+    }
+  }
+</script>

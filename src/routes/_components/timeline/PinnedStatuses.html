@@ -1,0 +1,41 @@
+{#if pinnedStatuses.length }
+  <h1 class="sr-only">Pinned statuses</h1>
+  <div role="feed" aria-label="Pinned statuses" class="pinned-statuses">
+    {#each pinnedStatuses as status, index (status.id)}
+      <Status {status}
+              timelineType="pinned"
+              timelineValue={accountId}
+              {index}
+              length={pinnedStatuses.length}
+      />
+    {/each}
+  </div>
+{/if}
+<script>
+  import { store } from '../../_store/store'
+  import Status from '../status/Status.html'
+  import { updatePinnedStatusesForAccount } from '../../_actions/pinnedStatuses'
+  import { on } from '../../_utils/eventBus'
+
+  export default {
+    async oncreate () {
+      on('updatePinnedStatuses', this, () => this.updatePinnedStatuses())
+      await this.updatePinnedStatuses()
+    },
+    computed: {
+      pinnedStatuses: ({ $pinnedStatuses, $currentInstance, accountId }) => {
+        return ($pinnedStatuses[$currentInstance] && $pinnedStatuses[$currentInstance][accountId]) || []
+      }
+    },
+    store: () => store,
+    components: {
+      Status
+    },
+    methods: {
+      async updatePinnedStatuses () {
+        let { accountId } = this.get()
+        await updatePinnedStatusesForAccount(accountId)
+      }
+    }
+  }
+</script>

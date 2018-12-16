@@ -40,12 +40,32 @@ export const mastodonLogInButton = $('button[type="submit"]')
 export const followsButton = $('.account-profile-details > *:nth-child(2)')
 export const followersButton = $('.account-profile-details > *:nth-child(3)')
 export const avatarInComposeBox = $('.compose-box-avatar')
+export const displayNameInComposeBox = $('.compose-box-display-name')
+export const generalSettingsButton = $('a[href="/settings/general"]')
+export const markMediaSensitiveInput = $('#choice-mark-media-sensitive')
+export const neverMarkMediaSensitiveInput = $('#choice-never-mark-media-sensitive')
+export const removeEmojiFromDisplayNamesInput = $('#choice-omit-emoji-in-display-names')
+export const dialogOptionsOption = $(`.modal-dialog button`)
 
-export const favoritesCountElement = $('.status-favs-reblogs:nth-child(3)').addCustomDOMProperties({
+export const composeModalInput = $('.modal-dialog .compose-box-input')
+export const composeModalComposeButton = $('.modal-dialog .compose-box-button')
+export const composeModalContentWarningInput = $('.modal-dialog .content-warning-input')
+export const composeModalEmojiButton = $('.modal-dialog .compose-box-toolbar button:nth-child(1)')
+export const composeModalPostPrivacyButton = $('.modal-dialog .compose-box-toolbar button:nth-child(3)')
+
+export function getComposeModalNthMediaAltInput (n) {
+  return $(`.modal-dialog .compose-media:nth-child(${n}) .compose-media-alt input`)
+}
+
+export function getComposeModalNthMediaImg (n) {
+  return $(`.modal-dialog .compose-media:nth-child(${n}) img`)
+}
+
+export const favoritesCountElement = $('.status-favs').addCustomDOMProperties({
   innerCount: el => parseInt(el.innerText, 10)
 })
 
-export const reblogsCountElement = $('.status-favs-reblogs:nth-child(2)').addCustomDOMProperties({
+export const reblogsCountElement = $('.status-reblogs').addCustomDOMProperties({
   innerCount: el => parseInt(el.innerText, 10)
 })
 
@@ -57,12 +77,12 @@ export const getActiveElementClass = exec(() =>
   (document.activeElement && document.activeElement.getAttribute('class')) || ''
 )
 
-export const getActiveElementInnerText = exec(() =>
-  (document.activeElement && document.activeElement.innerText) || ''
+export const getActiveElementTagName = exec(() =>
+  (document.activeElement && document.activeElement.tagName) || ''
 )
 
-export const getActiveElementAriaLabel = exec(() =>
-  (document.activeElement && document.activeElement.getAttribute('aria-label')) || ''
+export const getActiveElementInnerText = exec(() =>
+  (document.activeElement && document.activeElement.innerText) || ''
 )
 
 export const getActiveElementInsideNthStatus = exec(() => {
@@ -76,7 +96,13 @@ export const getActiveElementInsideNthStatus = exec(() => {
   return ''
 })
 
+export const getTitleText = exec(() => document.head.querySelector('title').innerHTML)
+
 export const goBack = exec(() => window.history.back())
+
+export const goForward = exec(() => window.history.forward())
+
+export const reload = exec(() => window.location.reload())
 
 export const forceOffline = exec(() => window.__forceOnline(false))
 
@@ -86,10 +112,16 @@ export const getComposeSelectionStart = exec(() => composeInput().selectionStart
   dependencies: { composeInput }
 })
 
-export const getBodyClassList = exec(() => Array.prototype.slice.apply(document.body.classList))
+export const getOpacity = selector => exec(() => window.getComputedStyle(document.querySelector(selector)).opacity, {
+  dependencies: { selector }
+})
 
-export const scrollContainerToTop = exec(() => {
-  document.getElementsByClassName('container')[0].scrollTop = 0
+export const getCurrentTheme = exec(() => {
+  let themeLink = document.head.querySelector('link[rel=stylesheet][href^="/theme-"]')
+  if (themeLink) {
+    return themeLink.getAttribute('href').match(/^\/theme-(.*)\.css$/, '')[1]
+  }
+  return 'default'
 })
 
 export const uploadKittenImage = i => (exec(() => {
@@ -112,6 +144,14 @@ export const focus = (selector) => (exec(() => {
     selector
   }
 }))
+
+export const scrollToBottom = exec(() => {
+  document.scrollingElement.scrollTop = document.scrollingElement.scrollHeight
+})
+
+export const scrollToTop = exec(() => {
+  document.scrollingElement.scrollTop = 0
+})
 
 export function getNthMediaAltInput (n) {
   return $(`.compose-box .compose-media:nth-child(${n}) .compose-media-alt input`)
@@ -149,6 +189,10 @@ export function getNthDeleteMediaButton (n) {
   return $(`.compose-media:nth-child(${n}) .compose-media-delete-button`)
 }
 
+export function getAriaSetSize () {
+  return getNthStatus(0).getAttribute('aria-setsize')
+}
+
 export function getNthStatus (n) {
   return $(getNthStatusSelector(n))
 }
@@ -163,6 +207,22 @@ export function getNthStatusContent (n) {
 
 export function getNthStatusSpoiler (n) {
   return $(`${getNthStatusSelector(n)} .status-spoiler`)
+}
+
+export function getNthStatusSensitiveMediaButton (n) {
+  return $(`${getNthStatusSelector(n)} .status-sensitive-media-button`)
+}
+
+export function getNthStatusMedia (n) {
+  return $(`${getNthStatusSelector(n)} .status-media`)
+}
+
+export function getNthStatusRelativeDate (n) {
+  return $(`${getNthStatusSelector(n)} .status-relative-date`)
+}
+
+export function getNthStatusMediaImg (n) {
+  return $(`${getNthStatusSelector(n)} .status-media img`)
 }
 
 export function getNthStatusHeader (n) {
@@ -274,33 +334,10 @@ export async function validateTimeline (t, timeline) {
   }
 }
 
-export async function scrollToTopOfTimeline (t) {
-  let i = await getFirstVisibleStatus().getAttribute('aria-posinset')
-  while (true) {
-    await t.hover(getNthStatus(i))
-      .expect($('.loading-footer').exist).notOk()
-    if (--i <= 0) {
-      break
-    }
-  }
-}
-
-export async function scrollToBottomOfTimeline (t) {
-  let i = 0
-  while (true) {
-    await t.hover(getNthStatus(i))
-      .expect($('.loading-footer').exist).notOk()
-    let size = await getNthStatus(i).getAttribute('aria-setsize')
-    if (++i >= size - 1) {
-      break
-    }
-  }
-}
-
 export async function scrollToStatus (t, n) {
   let timeout = 20000
   for (let i = 0; i <= n; i++) {
-    await t.expect(getNthStatus(i).exists).ok({timeout})
+    await t.expect(getNthStatus(i).exists).ok({ timeout })
       .hover(getNthStatus(i))
       .expect($('.loading-footer').exist).notOk()
     if (i < n) {

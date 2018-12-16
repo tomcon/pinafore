@@ -1,0 +1,56 @@
+<ModalDialog
+  {id}
+  {label}
+  {title}
+  background="var(--main-bg)"
+>
+  <GenericDialogList selectable={true} {items} on:click="onClick(event)" />
+</ModalDialog>
+<script>
+  import ModalDialog from './ModalDialog.html'
+  import { store } from '../../../_store/store'
+  import { POST_PRIVACY_OPTIONS } from '../../../_static/statuses'
+  import { setPostPrivacy } from '../../../_actions/postPrivacy'
+  import GenericDialogList from './GenericDialogList.html'
+  import { show } from '../helpers/showDialog'
+  import { close } from '../helpers/closeDialog'
+  import { oncreate } from '../helpers/onCreateDialog'
+
+  export default {
+    oncreate,
+    components: {
+      ModalDialog,
+      GenericDialogList
+    },
+    store: () => store,
+    data: () => ({
+      postPrivacyOptions: POST_PRIVACY_OPTIONS
+    }),
+    methods: {
+      show,
+      close,
+      onClick (item) {
+        let { realm } = this.get()
+        setPostPrivacy(realm, item.key)
+        this.close()
+      }
+    },
+    computed: {
+      composeData: ({ $currentComposeData, realm }) => $currentComposeData[realm] || {},
+      postPrivacy: ({ postPrivacyKey }) => {
+        return POST_PRIVACY_OPTIONS.find(_ => _.key === postPrivacyKey)
+      },
+      postPrivacyKey: ({ composeData, $currentVerifyCredentials }) => {
+        return composeData.postPrivacy || $currentVerifyCredentials.source.privacy
+      },
+      items: ({ postPrivacy, postPrivacyOptions }) => {
+        return postPrivacyOptions.map(option => ({
+          key: option.key,
+          label: option.label,
+          icon: option.icon,
+          selected: postPrivacy.key === option.key
+        }))
+      }
+    }
+  }
+</script>

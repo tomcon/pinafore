@@ -1,0 +1,65 @@
+<img
+  class={computedClass}
+  aria-hidden={ariaHidden}
+  {alt}
+  {title}
+  {width}
+  {height}
+  src={displaySrc}
+  on:mouseover="onMouseOver(event)"
+  ref:node
+/>
+<style>
+  .non-autoplay-zoom-in {
+    cursor: zoom-in;
+  }
+  .non-autoplay-zoom-in.is-link {
+    cursor: pointer;
+  }
+</style>
+<script>
+  import { mouseover } from '../_utils/events'
+  import { decodeImage } from '../_utils/decodeImage'
+  import { classname } from '../_utils/classname'
+  import { ONE_TRANSPARENT_PIXEL } from '../_static/media'
+
+  export default {
+    async oncreate () {
+      let { currentSrc } = this.get()
+      try {
+        let image = new Image()
+        image.src = currentSrc
+        await decodeImage(image)
+        this.set({ loaded: true })
+        this.fire('imgLoad')
+      } catch (e) {
+        this.fire('imgLoadError', e)
+      }
+    },
+    methods: {
+      onMouseOver (mouseOver) {
+        this.set({ mouseOver })
+      }
+    },
+    events: {
+      mouseover
+    },
+    data: () => ({
+      alt: '',
+      title: '',
+      mouseOver: false,
+      loaded: false,
+      ariaHidden: false
+    }),
+    computed: {
+      computedClass: ({ className, src, staticSrc, isLink }) => (classname(
+        className,
+        src !== staticSrc && 'non-autoplay-zoom-in',
+        isLink && 'is-link'
+      )),
+      currentSrc: ({ mouseOver, src, staticSrc }) => mouseOver ? src : staticSrc,
+      // using a transparent pixel as placeholder ensures broken images don't have wrong sizes
+      displaySrc: ({ loaded, currentSrc }) => loaded ? currentSrc : ONE_TRANSPARENT_PIXEL
+    }
+  }
+</script>

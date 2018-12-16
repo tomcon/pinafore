@@ -1,0 +1,107 @@
+<div class="compose-autosuggest {shown ? 'shown' : ''} {realm === 'dialog' ? 'is-dialog' : ''}"
+       aria-hidden="true" >
+  <ComposeAutosuggestionList
+    items={autosuggestSearchResults}
+    on:click="onClick(event)"
+    type={autosuggestType}
+    selected={autosuggestSelected}
+  />
+</div>
+<style>
+  .compose-autosuggest {
+    position: absolute;
+    left: 5px;
+    top: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s linear;
+    min-width: 400px;
+    max-width: calc(100vw - 20px);
+    z-index: 7000;
+  }
+  .compose-autosuggest.is-dialog {
+    z-index: 11000;
+  }
+  .compose-autosuggest.shown {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  @media (max-width: 479px) {
+    .compose-autosuggest {
+      /* hack: move this over to the left on mobile so it's easier to see */
+      transform: translateX(-58px); /* avatar size 48px + 10px padding */
+      min-width: 0;
+      width: calc(100vw - 20px);
+    }
+  }
+
+</style>
+<script>
+  import { store } from '../../_store/store'
+  import ComposeAutosuggestionList from './ComposeAutosuggestionList.html'
+  import get from 'lodash-es/get'
+  import { selectAutosuggestItem } from '../../_actions/autosuggest'
+  import { observe } from 'svelte-extras'
+  import { once } from '../../_utils/once'
+
+  export default {
+    oncreate () {
+      this._promiseChain = Promise.resolve()
+      this.observe('shouldBeShown', (shouldBeShown) => {
+        // TODO: hack so that when the user clicks the button, and the textarea blurs,
+        // we don't immediately hide the dropdown which would cause the click to get lost
+        this._promiseChain = this._promiseChain.then(() => {
+          if (!shouldBeShown) {
+            return Promise.race([
+              new Promise(resolve => setTimeout(resolve, 200)),
+              new Promise(resolve => this.once('autosuggestItemSelected', resolve))
+            ])
+          }
+        }).then(() => {
+          this.set({ shown: shouldBeShown })
+        })
+      })
+    },
+    methods: {
+      observe,
+      once,
+      onClick (item) {
+        this.fire('autosuggestItemSelected')
+        selectAutosuggestItem(item)
+      }
+    },
+    computed: {
+      /* eslint-disable camelcase */
+      composeSelectionStart: ({ $autosuggestData_composeSelectionStart, $currentInstance, realm }) => (
+        get($autosuggestData_composeSelectionStart, [$currentInstance, realm], 0)
+      ),
+      composeFocused: ({ $autosuggestData_composeFocused, $currentInstance, realm }) => (
+        get($autosuggestData_composeFocused, [$currentInstance, realm], false)
+      ),
+      autosuggestSearchResults: ({ $autosuggestData_autosuggestSearchResults, $currentInstance, realm }) => (
+        get($autosuggestData_autosuggestSearchResults, [$currentInstance, realm], [])
+      ),
+      autosuggestType: ({ $autosuggestData_autosuggestType, $currentInstance, realm }) => (
+        get($autosuggestData_autosuggestType, [$currentInstance, realm])
+      ),
+      autosuggestSelected: ({ $autosuggestData_autosuggestSelected, $currentInstance, realm }) => (
+        get($autosuggestData_autosuggestSelected, [$currentInstance, realm], 0)
+      ),
+      autosuggestSearchText: ({ $autosuggestData_autosuggestSelected, $currentInstance, realm }) => (
+        get($autosuggestData_autosuggestSelected, [$currentInstance, realm])
+      ),
+      /* eslint-enable camelcase */
+      shouldBeShown: ({ realm, $autosuggestShown, composeFocused }) => (
+        !!($autosuggestShown && composeFocused)
+      )
+    },
+    data: () => ({
+      shown: false
+    }),
+    store: () => store,
+    components: {
+      ComposeAutosuggestionList
+    }
+  }
+</script>

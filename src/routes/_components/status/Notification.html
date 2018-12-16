@@ -1,0 +1,57 @@
+{#if status}
+  <Status {index} {length} {timelineType} {timelineValue} {focusSelector}
+          {status} {notification} on:recalculateHeight
+  />
+{:else}
+  <article class="notification-article"
+           tabindex="0"
+           aria-posinset={index}
+           aria-setsize={length}
+           aria-label={ariaLabel}
+  >
+    <StatusHeader {notification} {notificationId} {status} {statusId} {timelineType}
+                  {account} {accountId} {uuid} isStatusInNotification="true" />
+  </article>
+{/if}
+<style>
+  .notification-article {
+    width: 560px;
+    max-width: calc(100vw - 40px);
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--main-border);
+  }
+  @media (max-width: 767px) {
+    .notification-article {
+      padding: 10px 10px;
+      max-width: calc(100vw - 20px);
+      width: 580px;
+    }
+  }
+</style>
+<script>
+  import Status from './Status.html'
+  import StatusHeader from './StatusHeader.html'
+  import { store } from '../../_store/store'
+  import { getAccountAccessibleName } from '../../_a11y/getAccountAccessibleName'
+
+  export default {
+    components: {
+      Status,
+      StatusHeader
+    },
+    store: () => store,
+    computed: {
+      account: ({ notification }) => notification.account,
+      accountId: ({ account }) => account.id,
+      notificationId: ({ notification }) => notification.id,
+      status: ({ notification }) => notification.status,
+      statusId: ({ status }) => status && status.id,
+      uuid: ({ $currentInstance, timelineType, timelineValue, notificationId, statusId }) => {
+        return `${$currentInstance}/${timelineType}/${timelineValue}/${notificationId}/${statusId || ''}`
+      },
+      ariaLabel: ({ status, account, $omitEmojiInDisplayNames }) => (
+        !status && `${getAccountAccessibleName(account, $omitEmojiInDisplayNames)} followed you, @${account.acct}`
+      )
+    }
+  }
+</script>

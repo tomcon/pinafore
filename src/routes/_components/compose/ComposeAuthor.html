@@ -1,0 +1,75 @@
+<a href="/accounts/{verifyCredentials.id}"
+   class="compose-box-avatar"
+   aria-label="Profile for {accessibleName}">
+  <Avatar account={verifyCredentials} size="small"/>
+</a>
+<a class="compose-box-display-name" href="/accounts/{verifyCredentials.id}">
+  <AccountDisplayName account={verifyCredentials} />
+</a>
+<span class="compose-box-handle">
+  {'@' + verifyCredentials.acct}
+</span>
+<style>
+  .compose-box-avatar {
+    grid-area: avatar;
+    margin-right: 15px;
+  }
+  .compose-box-display-name {
+    color: var(--deemphasized-text-color);
+    grid-area: name;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1.1em;
+    margin-left: 5px;
+    font-weight: 600;
+  }
+  .compose-box-display-name,
+  .compose-box-display-name:hover,
+  .compose-box-display-name:visited {
+    color: var(--body-text-color);
+  }
+  :global(.compose-box-handle) {
+    grid-area: handle;
+    color: var(--deemphasized-text-color);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1.1em;
+    margin-left: 5px;
+  }
+
+  @media (max-width: 767px) {
+    .compose-box-avatar {
+      grid-area: avatar;
+      margin-right: 5px;
+    }
+  }
+</style>
+<script>
+  import Avatar from '../Avatar.html'
+  import { store } from '../../_store/store'
+  import AccountDisplayName from '../profile/AccountDisplayName.html'
+  import { removeEmoji } from '../../_utils/removeEmoji'
+
+  export default {
+    components: {
+      Avatar,
+      AccountDisplayName
+    },
+    store: () => store,
+    computed: {
+      verifyCredentials: ({ $currentVerifyCredentials }) => $currentVerifyCredentials,
+      emojis: ({ verifyCredentials }) => (verifyCredentials.emojis || []),
+      displayName: ({ verifyCredentials }) => verifyCredentials.display_name || verifyCredentials.username,
+      accessibleName: ({ displayName, emojis, $omitEmojiInDisplayNames }) => {
+        if ($omitEmojiInDisplayNames) {
+          return removeEmoji(displayName, emojis) || displayName
+        }
+        return displayName
+      }
+    }
+  }
+</script>

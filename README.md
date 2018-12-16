@@ -53,6 +53,8 @@ Compatible versions of each (Opera, Brave, Samsung, etc.) should be fine.
 
 ## Building
 
+Pinafore requires [Node.js](https://nodejs.org/en/) v8+ and `npm`.
+
 To build Pinafore for production:
 
     npm install
@@ -68,7 +70,23 @@ To build a docker image for production:
 
 Now Pinafore is running at `localhost:4002`.
 
-Pinafore requires [Node.js](https://nodejs.org/en/) v8+.
+### Updating
+
+To keep your version of Pinafore up to date, you can use `git` to check out the latest tag:
+
+    git checkout $(git tag -l | sort -Vr | head -n 1)
+
+### Exporting
+
+You can export Pinafore as a static site. Run:
+
+    npm run export
+
+Static files will be written to `__sapper__/export`.
+
+Note that this is not the recommended method, because
+[CSP](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) headers are not 
+currently supported for the exported version.
 
 ## Developing and testing
 

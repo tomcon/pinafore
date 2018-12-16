@@ -1,0 +1,164 @@
+{#if type === 'video'}
+  <button type="button"
+          class="play-video-button {$largeInlineMedia ? '' : 'fixed-size'}"
+          aria-label="Play video: {description}"
+          delegate-key={delegateKey}
+          style="width: {inlineWidth}px; height: {inlineHeight}px;">
+    <PlayVideoIcon />
+    <LazyImage
+      alt={description}
+      title={description}
+      src={previewUrl}
+      fallback={oneTransparentPixel}
+      width={inlineWidth}
+      height={inlineHeight}
+      background="var(--loading-bg)"
+      {focus}
+    />
+  </button>
+{:else}
+  <button type="button"
+          class="show-image-button {$largeInlineMedia ? '' : 'fixed-size'}"
+          aria-label="Show image: {description}"
+          title={description}
+          delegate-key={delegateKey}
+          on:mouseover="set({mouseover: event})"
+          style="width: {inlineWidth}px; height: {inlineHeight}px;">
+  {#if type === 'gifv' && $autoplayGifs}
+    <AutoplayVideo
+      ariaLabel="Animated GIF: {description}"
+      poster={previewUrl}
+      src={url}
+      width={inlineWidth}
+      height={inlineHeight}
+      {focus}
+    />
+  {:elseif type === 'gifv' && !$autoplayGifs}
+    <NonAutoplayGifv
+      class={noNativeWidthHeight ? 'no-native-width-height' : ''}
+      label="Animated GIF: {description}"
+      poster={previewUrl}
+      src={url}
+      staticSrc={previewUrl}
+      width={inlineWidth}
+      height={inlineHeight}
+      playing={mouseover}
+      {focus}
+    />
+  {:else}
+    <LazyImage
+      alt={description}
+      title={description}
+      src={previewUrl}
+      fallback={oneTransparentPixel}
+      width={inlineWidth}
+      height={inlineHeight}
+      background="var(--loading-bg)"
+      {focus}
+    />
+  {/if}
+</button>
+{/if}
+<style>
+
+  :global(.status-media video, .status-media img) {
+    object-fit: cover;
+  }
+  .play-video-button, .show-image-button {
+    margin: auto;
+    padding: 0;
+    border-radius: 0;
+    border: none;
+    background: none;
+    position: relative;
+  }
+
+  .show-image-button {
+    cursor: zoom-in;
+  }
+</style>
+<script>
+  import { DEFAULT_MEDIA_WIDTH, DEFAULT_MEDIA_HEIGHT, ONE_TRANSPARENT_PIXEL } from '../../_static/media'
+  import { importShowVideoDialog, importShowImageDialog } from '../dialog/asyncDialogs'
+  import { mouseover } from '../../_utils/events'
+  import NonAutoplayGifv from '../NonAutoplayGifv.html'
+  import PlayVideoIcon from '../PlayVideoIcon.html'
+  import { store } from '../../_store/store'
+  import LazyImage from '../LazyImage.html'
+  import AutoplayVideo from '../AutoplayVideo.html'
+  import { registerClickDelegate } from '../../_utils/delegate'
+
+  export default {
+    oncreate () {
+      let { delegateKey } = this.get()
+      registerClickDelegate(this, delegateKey, () => {
+        let { type } = this.get()
+        if (type === 'video') {
+          this.onClickPlayVideoButton()
+        } else {
+          this.onClickShowImageButton()
+        }
+      })
+    },
+    computed: {
+      focus: ({ meta }) => meta && meta.focus,
+      // width/height to show inline
+      inlineWidth: ({ smallWidth, $largeInlineMedia }) => {
+        if (!$largeInlineMedia) {
+          return '100%'
+        }
+        return smallWidth || DEFAULT_MEDIA_WIDTH
+      },
+      inlineHeight: ({ smallHeight, $largeInlineMedia }) => {
+        if (!$largeInlineMedia) {
+          return 'auto'
+        }
+        return smallHeight || DEFAULT_MEDIA_HEIGHT
+      },
+      // width/height to show in a modal
+      modalWidth: ({ originalWidth, inlineWidth }) => originalWidth || inlineWidth,
+      modalHeight: ({ originalHeight, inlineHeight }) => originalHeight || inlineHeight,
+      meta: ({ media }) => media.meta,
+      small: ({ meta }) => meta && meta.small,
+      original: ({ meta }) => meta && meta.original,
+      smallWidth: ({ small }) => small && small.width,
+      smallHeight: ({ small }) => small && small.height,
+      originalWidth: ({ original }) => original && original.width,
+      originalHeight: ({ original }) => original && original.height,
+      noNativeWidthHeight: ({ smallWidth, smallHeight }) => typeof smallWidth !== 'number' || typeof smallHeight !== 'number',
+      delegateKey: ({ media, uuid }) => `media-${uuid}-${media.id}`,
+      description: ({ media }) => media.description || '',
+      previewUrl: ({ media }) => media.preview_url,
+      url: ({ media }) => media.url,
+      type: ({ media }) => media.type
+    },
+    methods: {
+      async onClickPlayVideoButton () {
+        let { previewUrl, url, modalWidth, modalHeight, description } = this.get()
+        let showVideoDialog = await importShowVideoDialog()
+        showVideoDialog(previewUrl, url,
+          modalWidth, modalHeight, description)
+      },
+      async onClickShowImageButton () {
+        let { previewUrl, url, modalWidth, modalHeight, description, type } = this.get()
+        let showImageDialog = await importShowImageDialog()
+        showImageDialog(previewUrl, url, type,
+          modalWidth, modalHeight, description)
+      }
+    },
+    data: () => ({
+      oneTransparentPixel: ONE_TRANSPARENT_PIXEL,
+      mouseover: void 0
+    }),
+    store: () => store,
+    events: {
+      mouseover
+    },
+    components: {
+      NonAutoplayGifv,
+      PlayVideoIcon,
+      LazyImage,
+      AutoplayVideo
+    }
+  }
+</script>

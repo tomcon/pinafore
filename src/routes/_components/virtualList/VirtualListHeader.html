@@ -1,0 +1,61 @@
+<div class="virtual-list-header {shown ? 'shown' : ''} {fadedIn ? 'faded-in' : ''}"
+     ref:node >
+  <svelte:component this={component} {virtualProps} />
+</div>
+<style>
+  .virtual-list-header {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    opacity: 0;
+    z-index: 10;
+    transition: none;
+    display: none;
+  }
+  .virtual-list-header.shown {
+    display: block;
+    transition: opacity 0.333s linear;
+  }
+  .virtual-list-header.faded-in {
+    opacity: 1;
+  }
+</style>
+<script>
+  import { virtualListStore } from './virtualListStore'
+  import { doubleRAF } from '../../_utils/doubleRAF'
+  import { mark, stop } from '../../_utils/marks'
+  import { observe } from 'svelte-extras'
+
+  export default {
+    oncreate () {
+      this.observe('shown', shown => {
+        if (shown) {
+          this.doCalculateHeight()
+          doubleRAF(() => this.set({ fadedIn: true })) //  animate in
+        } else {
+          this.set({ fadedIn: false })
+        }
+      }, { init: false })
+    },
+    data: () => ({
+      fadedIn: false
+    }),
+    store: () => virtualListStore,
+    methods: {
+      observe,
+      doCalculateHeight () {
+        let { heightCalculated } = this.get()
+        if (heightCalculated) { // only need to calculate once, it never changes
+          return
+        }
+        this.set({ heightCalculated: true })
+        requestAnimationFrame(() => {
+          mark('VirtualListHeader gBCR')
+          let rect = this.refs.node.getBoundingClientRect()
+          stop('VirtualListHeader gBCR')
+          this.store.setForRealm({ headerHeight: rect.height })
+        })
+      }
+    }
+  }
+</script>

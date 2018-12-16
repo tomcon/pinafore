@@ -2,44 +2,41 @@ language: node_js
 node_js:
   - "8"
 dist: trusty   # needed for chrome headless
-sudo: required # needed for chrome headless
+sudo: required # needed for various sudo operations
 addons:
   chrome: stable
   postgresql: "10"
   apt:
     packages:
-    - postgresql-10
-    - postgresql-client-10
-    - postgresql-contrib-10
-    # the following are mastodon dependencies
-    - imagemagick
-    - libpq-dev
-    - libxml2-dev
-    - libxslt1-dev
-    - file
-    - g++
-    - libprotobuf-dev
-    - protobuf-compiler
-    - pkg-config nodejs
-    - gcc
     - autoconf
     - bison
     - build-essential
-    - libssl-dev
-    - libyaml-dev
-    - libreadline6-dev
-    - zlib1g-dev
-    - libncurses5-dev
+    - file
+    - g++
+    - gcc
+    - imagemagick
     - libffi-dev
-    - libgdbm3
     - libgdbm-dev
-    - redis-tools
-    - libidn11-dev
+    - libgdbm3
     - libicu-dev
-services:
-  - redis-server
+    - libidn11-dev
+    - libncurses5-dev
+    - libpq-dev
+    - libprotobuf-dev
+    - libreadline6-dev
+    - libssl-dev
+    - libxml2-dev
+    - libxslt1-dev
+    - libyaml-dev
+    - pkg-config nodejs
+    - postgresql-10
+    - postgresql-client-10
+    - postgresql-contrib-10
+    - protobuf-compiler
+    - redis-server
+    - redis-tools
+    - zlib1g-dev
 before_install:
-  - npm install -g npm@5
   - npm install -g greenkeeper-lockfile@1
   - ./bin/setup-mastodon-in-travis.sh
 before_script:
@@ -59,16 +56,18 @@ matrix:
   include:
     - env: BROWSER=chrome:headless COMMAND=test-browser-suite0
     - env: BROWSER=chrome:headless COMMAND=test-browser-suite1
-    - env: COMMAND=deploy-dev-travis
+    - env: COMMAND=test-unit
+    - env: COMMAND=deploy-all-travis
   allow_failures:
-    - env: COMMAND=deploy-dev-travis
+    - env: COMMAND=deploy-all-travis
 branches:
   only:
   - master
   - /^greenkeeper/.*$/
 cache:
+  npm: true
+  yarn: true
+  bundler: true
   directories:
-  - $HOME/.npm
-  - $HOME/.rvm
-  - $HOME/.bundle
-  - $HOME/.yarn-cache
+  - /home/travis/.rvm/
+  - /home/travis/ffmpeg-static/

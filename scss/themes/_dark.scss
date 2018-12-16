@@ -1,4 +1,4 @@
-@mixin darkTheme() {
+:root {
   $deemphasized-color: lighten($main-bg-color, 45%);
 
   --action-button-deemphasized-fill-color: #{$deemphasized-color};
@@ -8,7 +8,7 @@
   --action-button-deemphasized-fill-color-pressed-hover: #{darken($deemphasized-color, 2%)};
   --action-button-deemphasized-fill-color-pressed-active: #{darken($deemphasized-color, 15%)};
 
-  --loading-bg: #{#ededed};
+  --loading-bg: #{#222};
 
   --deemphasized-text-color: #{$deemphasized-color};
 
@@ -24,5 +24,11 @@
   --muted-modal-focus: #{#999};
   --muted-modal-hover: #{rgba(255, 255, 255, 0.2)};
 
-  --compose-button-halo: #{rgba(255, 255, 255, 0.1)};
+  --compose-button-halo: #{rgba(0, 0, 0, 0.1)};
+
+  --compose-autosuggest-item-hover: #{lighten($main-bg-color, 10%)};
+  --compose-autosuggest-item-active: #{lighten($main-bg-color, 15%)};
+  --compose-autosuggest-outline: #{lighten($border-color, 20%)};
+
+  --file-drop-mask: #{rgba(30, 30, 30, 0.8)};
 }

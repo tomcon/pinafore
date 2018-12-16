@@ -1,0 +1,188 @@
+<ModalDialog
+  {id}
+  {label}
+  {title}
+  background="var(--main-bg)"
+>
+  <GenericDialogList selectable={false} {items} on:click="onClick(event)"/>
+</ModalDialog>
+<script>
+import ModalDialog from './ModalDialog.html'
+import { store } from '../../../_store/store'
+import GenericDialogList from './GenericDialogList.html'
+import { importShowComposeDialog } from '../asyncDialogs'
+import { createDialogId } from '../helpers/createDialogId'
+import { show } from '../helpers/showDialog'
+import { close } from '../helpers/closeDialog'
+import { oncreate } from '../helpers/onCreateDialog'
+import { setAccountBlocked } from '../../../_actions/block'
+import { setAccountMuted } from '../../../_actions/mute'
+import { setAccountFollowed } from '../../../_actions/follow'
+import { setShowReblogs } from '../../../_actions/setShowReblogs'
+import { setDomainBlocked } from '../../../_actions/setDomainBlocked'
+import { copyText } from '../../../_actions/copyText'
+
+export default {
+  oncreate,
+  store: () => store,
+  data: () => ({
+    id: createDialogId()
+  }),
+  computed: {
+    //
+    // begin copypasta (StatusOptionsDialog.html / AccountProfileOptionsDialog.html)
+    //
+    verifyCredentialsId: ({ verifyCredentials }) => verifyCredentials.id,
+    following: ({ relationship }) => relationship && relationship.following,
+    followRequested: ({ relationship }) => relationship && relationship.requested,
+    accountId: ({ account }) => account && account.id,
+    acct: ({ account }) => account.acct,
+    muting: ({ relationship }) => relationship && relationship.muting,
+    blocking: ({ relationship }) => relationship && relationship.blocking,
+    followLabel: ({ following, followRequested, account, acct }) => {
+      if (typeof following === 'undefined' || !account) {
+        return ''
+      }
+      return (following || followRequested)
+        ? `Unfollow @${acct}`
+        : `Follow @${acct}`
+    },
+    followIcon: ({ following, followRequested }) => (
+      following ? '#fa-user-times' : followRequested ? '#fa-hourglass' : '#fa-user-plus'
+    ),
+    blockLabel: ({ blocking, acct }) => (
+      blocking ? `Unblock @${acct}` : `Block @${acct}`
+    ),
+    blockIcon: ({ blocking }) => blocking ? '#fa-unlock' : '#fa-ban',
+    muteLabel: ({ muting, acct }) => (
+      muting ? `Unmute @${acct}` : `Mute @${acct}`
+    ),
+    muteIcon: ({ muting }) => muting ? '#fa-volume-up' : '#fa-volume-off',
+    isUser: ({ accountId, verifyCredentialsId }) => accountId === verifyCredentialsId,
+    //
+    // end copypasta (StatusOptionsDialog.html / AccountProfileOptionsDialog.html)
+    //
+    showingReblogs: ({ relationship }) => relationship ? relationship.showing_reblogs : true,
+    showReblogsLabel: ({ showingReblogs, acct }) => (
+      showingReblogs
+        ? `Hide boosts from @${acct}`
+        : `Show boosts from @${acct}`
+    ),
+    domain: ({ acct }) => acct.split('@')[1],
+    blockingDomain: ({ relationship }) => relationship && relationship.domain_blocking,
+    blockDomainLabel: ({ blockingDomain, domain }) => (
+      blockingDomain
+        ? `Unhide ${domain}`
+        : `Hide ${domain}`
+    ),
+    items: ({
+      blockLabel, blocking, blockIcon, muteLabel, muteIcon,
+      followLabel, followIcon, following, followRequested,
+      accountId, verifyCredentialsId, acct, isUser, showReblogsLabel,
+      domain, blockDomainLabel
+    }) => ([
+      !isUser && {
+        key: 'mention',
+        label: `Mention @${acct}`,
+        icon: '#fa-comments'
+      },
+      !isUser && !blocking && {
+        key: 'follow',
+        label: followLabel,
+        icon: followIcon
+      },
+      !isUser && {
+        key: 'block',
+        label: blockLabel,
+        icon: blockIcon
+      },
+      !isUser && !blocking && {
+        key: 'mute',
+        label: muteLabel,
+        icon: muteIcon
+      },
+      !isUser && following && {
+        key: 'showReblogs',
+        label: showReblogsLabel,
+        icon: '#fa-retweet'
+      },
+      !isUser && domain && {
+        key: 'blockDomain',
+        label: blockDomainLabel,
+        icon: '#fa-ban'
+      },
+      {
+        key: 'copy',
+        label: 'Copy link to account',
+        icon: '#fa-link'
+      }
+    ].filter(Boolean))
+  },
+  methods: {
+    show,
+    close,
+    onClick (item) {
+      switch (item.key) {
+        case 'mention':
+          return this.onMentionClicked()
+        case 'follow':
+          return this.onFollowClicked()
+        case 'block':
+          return this.onBlockClicked()
+        case 'mute':
+          return this.onMuteClicked()
+        case 'showReblogs':
+          return this.onShowReblogsClicked()
+        case 'blockDomain':
+          return this.onBlockDomainClicked()
+        case 'copy':
+          return this.onCopyClicked()
+      }
+    },
+    async onMentionClicked () {
+      let { acct } = this.get()
+      this.store.setComposeData('dialog', {
+        text: `@${acct} `
+      })
+      let showComposeDialog = await importShowComposeDialog()
+      showComposeDialog()
+      this.close()
+    },
+    async onFollowClicked () {
+      let { accountId, following } = this.get()
+      this.close()
+      await setAccountFollowed(accountId, !following, true)
+    },
+    async onBlockClicked () {
+      let { accountId, blocking } = this.get()
+      this.close()
+      await setAccountBlocked(accountId, !blocking, true)
+    },
+    async onMuteClicked () {
+      let { accountId, muting } = this.get()
+      this.close()
+      await setAccountMuted(accountId, !muting, true)
+    },
+    async onShowReblogsClicked () {
+      let { accountId, showingReblogs } = this.get()
+      this.close()
+      await setShowReblogs(accountId, !showingReblogs, true)
+    },
+    async onBlockDomainClicked () {
+      let { accountId, domain, blockingDomain } = this.get()
+      this.close()
+      await setDomainBlocked(accountId, domain, !blockingDomain, true)
+    },
+    async onCopyClicked () {
+      let { account } = this.get()
+      let { url } = account
+      this.close()
+      await copyText(url)
+    }
+  },
+  components: {
+    ModalDialog,
+    GenericDialogList
+  }
+}
+</script>

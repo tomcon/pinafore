@@ -1,64 +1,38 @@
 import { actions } from './mastodon-data'
 import { users } from '../tests/users'
-import { postStatus } from '../routes/_api/statuses'
-import { followAccount } from '../routes/_api/follow'
-import { favoriteStatus } from '../routes/_api/favorite'
-import { reblogStatus } from '../routes/_api/reblog'
+import { postStatus } from '../src/routes/_api/statuses'
+import { followAccount } from '../src/routes/_api/follow'
+import { favoriteStatus } from '../src/routes/_api/favorite'
+import { reblogStatus } from '../src/routes/_api/reblog'
 import fetch from 'node-fetch'
 import FileApi from 'file-api'
-import path from 'path'
-import fs from 'fs'
-import FormData from 'form-data'
-import { auth } from '../routes/_api/utils'
-import { pinStatus } from '../routes/_api/pin'
+import { pinStatus } from '../src/routes/_api/pin'
+import { submitMedia } from '../tests/submitMedia'
 
 global.File = FileApi.File
 global.FormData = FileApi.FormData
 global.fetch = fetch
 
-async function submitMedia (accessToken, filename, alt) {
-  let form = new FormData()
-  form.append('file', fs.createReadStream(path.join(__dirname, '../tests/images/' + filename)))
-  form.append('description', alt)
-  return new Promise((resolve, reject) => {
-    form.submit({
-      host: 'localhost',
-      port: 3000,
-      path: '/api/v1/media',
-      headers: auth(accessToken)
-    }, (err, res) => {
-      if (err) {
-        return reject(err)
-      }
-      let data = ''
-
-      res.on('data', chunk => {
-        data += chunk
-      })
-
-      res.on('end', () => resolve(JSON.parse(data)))
-    })
-  })
-}
-
 export async function restoreMastodonData () {
   console.log('Restoring mastodon data...')
   let internalIdsToIds = {}
   for (let action of actions) {
-    await new Promise(resolve => setTimeout(resolve, 1000)) // delay so that notifications have proper order
+    if (!action.post) {
+      // If the action is a boost, favorite, etc., then it needs to
+      // be delayed, otherwise it may appear in an unpredictable order and break the tests.
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
     console.log(JSON.stringify(action))
     let accessToken = users[action.user].accessToken
 
     if (action.post) {
       let { text, media, sensitive, spoiler, privacy, inReplyTo, internalId } = action.post
-      if (typeof inReplyTo !== 'undefined') {
-        inReplyTo = internalIdsToIds[inReplyTo]
-      }
       let mediaIds = media && await Promise.all(media.map(async mediaItem => {
         let mediaResponse = await submitMedia(accessToken, mediaItem, 'kitten')
         return mediaResponse.id
       }))
-      let status = await postStatus('localhost:3000', accessToken, text, inReplyTo, mediaIds,
+      let inReplyToId = inReplyTo && internalIdsToIds[inReplyTo]
+      let status = await postStatus('localhost:3000', accessToken, text, inReplyToId, mediaIds,
         sensitive, spoiler, privacy || 'public')
       if (typeof internalId !== 'undefined') {
         internalIdsToIds[internalId] = status.id

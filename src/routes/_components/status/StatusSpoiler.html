@@ -1,0 +1,77 @@
+<div class="status-spoiler {isStatusInNotification ? 'status-in-notification' : ''} {isStatusInOwnThread ? 'status-in-own-thread' : ''}">
+  <p>{@html massagedSpoilerText}</p>
+</div>
+<div class="status-spoiler-button {isStatusInOwnThread ? 'status-in-own-thread' : ''}">
+  <button type="button" delegate-key={delegateKey}>
+    {spoilerShown ? 'Show less' : 'Show more'}
+  </button>
+</div>
+<style>
+  .status-spoiler {
+    grid-area: spoiler;
+    word-wrap: break-word;
+    overflow: hidden;
+    white-space: pre-wrap;
+    font-size: 0.9em;
+    margin: 10px 5px;
+  }
+
+  .status-spoiler.status-in-own-thread {
+    font-size: 1.3em;
+    margin: 20px 5px 10px;
+  }
+
+  .status-spoiler.status-in-notification {
+    color: var(--very-deemphasized-text-color);
+  }
+
+  .status-spoiler-button {
+    grid-area: spoiler-btn;
+    margin: 10px 5px;
+  }
+
+  .status-spoiler-button.status-in-own-thread {
+  }
+
+  .status-spoiler-button button {
+    padding: 5px 10px;
+    font-size: 1.1em;
+  }
+</style>
+<script>
+  import { store } from '../../_store/store'
+  import { registerClickDelegate } from '../../_utils/delegate'
+  import { mark, stop } from '../../_utils/marks'
+  import { emojifyText } from '../../_utils/emojifyText'
+  import escapeHtml from 'escape-html'
+
+  export default {
+    oncreate () {
+      let { delegateKey } = this.get()
+      registerClickDelegate(this, delegateKey, () => this.onClickSpoilerButton())
+    },
+    store: () => store,
+    computed: {
+      spoilerText: ({ originalStatus }) => originalStatus.spoiler_text,
+      emojis: ({ originalStatus }) => originalStatus.emojis,
+      massagedSpoilerText: ({ spoilerText, emojis, $autoplayGifs }) => {
+        spoilerText = escapeHtml(spoilerText)
+        return emojifyText(spoilerText, emojis, $autoplayGifs)
+      },
+      delegateKey: ({ uuid }) => `spoiler-${uuid}`
+    },
+    methods: {
+      onClickSpoilerButton () {
+        requestAnimationFrame(() => {
+          mark('clickSpoilerButton')
+          let { uuid } = this.get()
+          let { spoilersShown } = this.store.get()
+          spoilersShown[uuid] = !spoilersShown[uuid]
+          this.store.set({ spoilersShown })
+          this.fire('recalculateHeight')
+          stop('clickSpoilerButton')
+        })
+      }
+    }
+  }
+</script>

@@ -1,0 +1,49 @@
+<SettingsLayout page='settings/instances/{params.instanceName}' label={params.instanceName}>
+  <h1 class="instance-name-h1">{params.instanceName}</h1>
+
+  {#if verifyCredentials}
+    <h2>Logged in as:</h2>
+    <InstanceUserProfile {verifyCredentials} />
+    <h2>Push notifications:</h2>
+    <PushNotificationSettings {instanceName} />
+    <h2>Theme:</h2>
+    <ThemeSettings {instanceName} />
+
+    <InstanceActions {instanceName} />
+  {/if}
+</SettingsLayout>
+<style>
+  .instance-name-h1 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+<script>
+  import { store } from '../../../_store/store'
+  import SettingsLayout from '../../../_components/settings/SettingsLayout.html'
+  import InstanceUserProfile from '../../../_components/settings/instance/InstanceUserProfile.html'
+  import PushNotificationSettings from '../../../_components/settings/instance/PushNotificationSettings.html'
+  import ThemeSettings from '../../../_components/settings/instance/ThemeSettings.html'
+  import InstanceActions from '../../../_components/settings/instance/InstanceActions.html'
+  import { updateVerifyCredentialsForInstance } from '../../../_actions/instances'
+
+  export default {
+    async oncreate () {
+      let { instanceName } = this.get()
+      await updateVerifyCredentialsForInstance(instanceName)
+    },
+    store: () => store,
+    computed: {
+      instanceName: ({ params }) => params.instanceName,
+      verifyCredentials: ({ $verifyCredentials, instanceName }) => $verifyCredentials && $verifyCredentials[instanceName]
+    },
+    components: {
+      SettingsLayout,
+      InstanceUserProfile,
+      PushNotificationSettings,
+      ThemeSettings,
+      InstanceActions
+    }
+  }
+</script>

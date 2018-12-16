@@ -1,0 +1,195 @@
+{#if realm === 'home'}
+  <h1 class="sr-only">Compose status</h1>
+{/if}
+<ComposeFileDrop {realm} >
+  <div class="{computedClassName} {hideAndFadeIn}">
+    <ComposeAuthor />
+    {#if contentWarningShown}
+      <div class="compose-content-warning-wrapper"
+           transition:slide="{duration: 333}">
+        <ComposeContentWarning {realm} {contentWarning} />
+      </div>
+    {/if}
+    <ComposeInput {realm} {text} {autoFocus} on:postAction="doPostStatus()" />
+    <ComposeLengthGauge {length} {overLimit} />
+    <ComposeToolbar {realm} {postPrivacy} {media} {contentWarningShown} {text} />
+    <ComposeLengthIndicator {length} {overLimit} />
+    <ComposeMedia {realm} {media} />
+  </div>
+</ComposeFileDrop>
+<ComposeStickyButton {showSticky}
+                     {overLimit}
+                     {hideAndFadeIn}
+                     on:postAction="doPostStatus()" />
+{#if !hideBottomBorder}
+  <div class="compose-box-border-bottom {hideAndFadeIn}"></div>
+{/if}
+
+<style>
+  .compose-box {
+    border-radius: 4px;
+    padding: 20px 20px 0 20px;
+    display: grid;
+    align-items: flex-start;
+    grid-template-areas:
+      "avatar name       handle    handle"
+      "avatar cw         cw        cw"
+      "avatar input      input     input"
+      "avatar gauge      gauge     gauge"
+      "avatar toolbar    toolbar   length"
+      "avatar media      media     media";
+    grid-template-columns: min-content minmax(0, max-content) 1fr 1fr;
+    width: 560px;
+    max-width: calc(100vw - 40px);
+  }
+
+  .compose-box.direct-reply {
+    background-color: var(--status-direct-background);
+  }
+
+  .compose-box.slim-size {
+    width: 540px;
+    max-width: calc(100vw - 60px);
+  }
+
+  .compose-box-fade-in {
+    transition: opacity 0.2s linear; /* main page reveal */
+  }
+
+  .compose-box-border-bottom {
+    height: 1px;
+    background: var(--main-border);
+    width: 100%;
+  }
+
+  .compose-content-warning-wrapper {
+    grid-area: cw;
+  }
+
+  @media (max-width: 767px) {
+    .compose-box {
+      padding: 10px 10px 0 10px;
+      max-width: calc(100vw - 20px);
+      width: 580px;
+    }
+
+    .compose-box.slim-size {
+      width: 560px;
+      max-width: calc(100vw - 40px);
+    }
+  }
+</style>
+<script>
+  import ComposeToolbar from './ComposeToolbar.html'
+  import ComposeLengthGauge from './ComposeLengthGauge.html'
+  import ComposeLengthIndicator from './ComposeLengthIndicator.html'
+  import ComposeAuthor from './ComposeAuthor.html'
+  import ComposeInput from './ComposeInput.html'
+  import ComposeStickyButton from './ComposeStickyButton.html'
+  import ComposeMedia from './ComposeMedia.html'
+  import ComposeContentWarning from './ComposeContentWarning.html'
+  import ComposeFileDrop from './ComposeFileDrop.html'
+  import { measureText } from '../../_utils/measureText'
+  import { POST_PRIVACY_OPTIONS } from '../../_static/statuses'
+  import { store } from '../../_store/store'
+  import { slide } from 'svelte-transitions'
+  import { postStatus, insertHandleForReply, setReplySpoiler, setReplyVisibility } from '../../_actions/compose'
+  import { classname } from '../../_utils/classname'
+
+  export default {
+    oncreate () {
+      let { realm, replySpoiler, replyVisibility } = this.get()
+      if (realm !== 'home' && realm !== 'dialog') {
+        // if this is a reply, populate the handle immediately
+        /* no await */ insertHandleForReply(realm)
+      }
+
+      if (replySpoiler) {
+        // default spoiler is same as the replied-to status
+        setReplySpoiler(realm, replySpoiler)
+      }
+
+      if (replyVisibility) {
+        // make sure the visibility is consistent with the replied-to status
+        setReplyVisibility(realm, replyVisibility)
+      }
+    },
+    components: {
+      ComposeAuthor,
+      ComposeToolbar,
+      ComposeLengthGauge,
+      ComposeLengthIndicator,
+      ComposeInput,
+      ComposeStickyButton,
+      ComposeMedia,
+      ComposeContentWarning,
+      ComposeFileDrop
+    },
+    data: () => ({
+      size: void 0,
+      isReply: false,
+      autoFocus: false,
+      hideBottomBorder: false,
+      hidden: false
+    }),
+    store: () => store,
+    computed: {
+      computedClassName: ({ overLimit, realm, size, postPrivacyKey, isReply }) => (classname(
+        'compose-box',
+        overLimit && 'over-char-limit',
+        size === 'slim' && 'slim-size',
+        isReply && postPrivacyKey === 'direct' && 'direct-reply'
+      )),
+      hideAndFadeIn: ({ hidden }) => (classname(
+        'compose-box-fade-in',
+        hidden && 'hidden'
+      )),
+      showSticky: ({ realm }) => realm === 'home',
+      composeData: ({ $currentComposeData, realm }) => $currentComposeData[realm] || {},
+      text: ({ composeData }) => composeData.text || '',
+      media: ({ composeData }) => composeData.media || [],
+      inReplyToId: ({ composeData }) => composeData.inReplyToId,
+      postPrivacy: ({ postPrivacyKey }) => POST_PRIVACY_OPTIONS.find(_ => _.key === postPrivacyKey),
+      defaultPostPrivacyKey: ({ $currentVerifyCredentials }) => $currentVerifyCredentials.source.privacy,
+      postPrivacyKey: ({ composeData, defaultPostPrivacyKey }) => composeData.postPrivacy || defaultPostPrivacyKey,
+      textLength: ({ text }) => measureText(text),
+      contentWarningLength: ({ contentWarning }) => measureText(contentWarning),
+      length: ({ textLength, contentWarningLength, contentWarningShown }) => (
+        textLength + (contentWarningShown ? contentWarningLength : 0)
+      ),
+      overLimit: ({ length, $maxStatusChars }) => length > $maxStatusChars,
+      contentWarningShown: ({ composeData }) => composeData.contentWarningShown,
+      contentWarning: ({ composeData }) => composeData.contentWarning || ''
+    },
+    transitions: {
+      slide
+    },
+    methods: {
+      doPostStatus () {
+        let {
+          text,
+          media,
+          postPrivacyKey,
+          contentWarning,
+          realm,
+          overLimit,
+          inReplyToUuid, // typical replies, using Pinafore-specific uuid
+          inReplyToId // delete-and-redraft replies, using standard id
+        } = this.get()
+        let sensitive = media.length && !!contentWarning
+        let mediaIds = media.map(_ => _.data.id)
+        let mediaDescriptions = media.map(_ => _.description)
+        let inReplyTo = inReplyToId || ((realm === 'home' || realm === 'dialog') ? null : realm)
+
+        if (overLimit || (!text && !media.length)) {
+          return // do nothing if invalid
+        }
+
+        /* no await */
+        postStatus(realm, text, inReplyTo, mediaIds,
+          sensitive, contentWarning, postPrivacyKey,
+          mediaDescriptions, inReplyToUuid)
+      }
+    }
+  }
+</script>

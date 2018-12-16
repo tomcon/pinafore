@@ -2,7 +2,6 @@
 
 const sass = require('node-sass')
 const chokidar = require('chokidar')
-const argv = require('yargs').argv
 const path = require('path')
 const debounce = require('lodash/debounce')
 const fs = require('fs')
@@ -16,10 +15,11 @@ const now = require('performance-now')
 const globalScss = path.join(__dirname, '../scss/global.scss')
 const defaultThemeScss = path.join(__dirname, '../scss/themes/_default.scss')
 const offlineThemeScss = path.join(__dirname, '../scss/themes/_offline.scss')
-const html2xxFile = path.join(__dirname, '../templates/2xx.html')
+const customScrollbarScss = path.join(__dirname, '../scss/custom-scrollbars.scss')
+const htmlTemplateFile = path.join(__dirname, '../src/template.html')
 const scssDir = path.join(__dirname, '../scss')
 const themesScssDir = path.join(__dirname, '../scss/themes')
-const assetsDir = path.join(__dirname, '../assets')
+const assetsDir = path.join(__dirname, '../static')
 
 function doWatch () {
   let start = now()
@@ -35,26 +35,31 @@ function doWatch () {
   chokidar.watch()
 }
 
+async function renderCss (file) {
+  return (await render({ file, outputStyle: 'compressed' })).css
+}
+
 async function compileGlobalSass () {
-  let results = await Promise.all([
-    render({file: defaultThemeScss, outputStyle: 'compressed'}),
-    render({file: globalScss, outputStyle: 'compressed'}),
-    render({file: offlineThemeScss, outputStyle: 'compressed'})
-  ])
+  let mainStyle = (await Promise.all([defaultThemeScss, globalScss].map(renderCss))).join('')
+  let offlineStyle = (await renderCss(offlineThemeScss))
+  let scrollbarStyle = (await renderCss(customScrollbarScss))
 
-  let css = results.map(_ => _.css).join('')
+  let html = await readFile(htmlTemplateFile, 'utf8')
+  html = html.replace(/<!-- begin inline CSS -->[\s\S]+<!-- end inline CSS -->/,
+    `<!-- begin inline CSS -->\n` +
+    `<style>\n${mainStyle}</style>\n` +
+    `<style media="only x" id="theOfflineStyle">\n${offlineStyle}</style>\n` +
+    `<style media="all" id="theScrollbarStyle">\n${scrollbarStyle}</style>\n` +
+    `<!-- end inline CSS -->`
+  )
 
-  let html = await readFile(html2xxFile, 'utf8')
-  html = html.replace(/<style>[\s\S]+?<\/style>/,
-    `<style>\n/* auto-generated w/ build-sass.js */\n${css}\n</style>`)
-
-  await writeFile(html2xxFile, html, 'utf8')
+  await writeFile(htmlTemplateFile, html, 'utf8')
 }
 
 async function compileThemesSass () {
   let files = (await readdir(themesScssDir)).filter(file => !path.basename(file).startsWith('_'))
   await Promise.all(files.map(async file => {
-    let res = await render({file: path.join(themesScssDir, file), outputStyle: 'compressed'})
+    let res = await render({ file: path.join(themesScssDir, file), outputStyle: 'compressed' })
     let outputFilename = 'theme-' + path.basename(file).replace(/\.scss$/, '.css')
     await writeFile(path.join(assetsDir, outputFilename), res.css, 'utf8')
   }))
@@ -62,7 +67,7 @@ async function compileThemesSass () {
 
 async function main () {
   await Promise.all([compileGlobalSass(), compileThemesSass()])
-  if (argv.watch) {
+  if (process.argv.includes('--watch')) {
     doWatch()
   }
 }

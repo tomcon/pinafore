@@ -1,7 +1,7 @@
 import { Selector as $ } from 'testcafe'
 import {
-  getNthStatus, getUrl, validateTimeline, scrollToBottomOfTimeline, getFirstVisibleStatus,
-  goBack, forceOffline, forceOnline, searchNavButton, searchInput, getNthSearchResult
+  getNthStatus, getUrl, validateTimeline, getFirstVisibleStatus,
+  goBack, forceOffline, forceOnline, searchNavButton, searchInput, getNthSearchResult, scrollToStatus
 } from '../utils'
 import { loginAsFoobar } from '../roles'
 import { bazThreadRelativeTo2, bazThreadRelativeTo2b, bazThreadRelativeTo2B2, quuxThread } from '../fixtures'
@@ -14,8 +14,9 @@ test('Shows a thread', async t => {
   await t
     .click($('a').withText('quux'))
 
-  await scrollToBottomOfTimeline(t)
+  await scrollToStatus(t, 26)
   await t
+    .hover(getNthStatus(26))
     .click(getNthStatus(26))
     .expect(getUrl()).contains('/statuses/')
 
@@ -38,13 +39,13 @@ test('Scrolls to proper point in thread', async t => {
     .expect(getUrl()).contains('/statuses/')
     .expect(getNthStatus(16).innerText).contains('unlisted thread 17')
     .expect(Math.round(getNthStatus(16).boundingClientRect.top))
-    .eql(Math.round($('.container').boundingClientRect.top))
+    .eql(Math.round($('.main-content').boundingClientRect.top))
 })
 
 async function navigateToBazAccount (t) {
   await t.click(searchNavButton)
     .expect(getUrl()).contains('/search')
-    .typeText(searchInput, 'baz', {paste: true})
+    .typeText(searchInput, 'baz', { paste: true })
     .pressKey('enter')
     .click(getNthSearchResult(1))
     .expect(getUrl()).contains('/accounts/5')

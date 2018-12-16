@@ -1,0 +1,37 @@
+<a class="status-relative-date {isStatusInNotification ? 'status-in-notification' : '' }"
+   href="/statuses/{originalStatusId}"
+   focus-key={focusKey}
+>
+  <time datetime={createdAtDate} title={timeagoFormattedDate}
+        aria-label="{timeagoFormattedDate} – click to show thread">
+    {timeagoFormattedDate}
+  </time>
+</a>
+<style>
+  .status-relative-date {
+    grid-area: relative-date;
+    align-self: center;
+    margin-left: 5px;
+    margin-right: 10px;
+    font-size: 1.1em;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .status-relative-date, .status-relative-date:hover, .status-relative-date:visited {
+    color: var(--deemphasized-text-color);
+  }
+
+  .status-relative-date.status-in-notification,
+  .status-relative-date.status-in-notification:hover,
+  .status-relative-date.status-in-notification:visited {
+    color: var(--very-deemphasized-text-color);
+  }
+
+</style>
+<script>
+  export default {
+    computed: {
+      focusKey: ({ uuid }) => `status-relative-date-${uuid}`
+    }
+  }
+</script>

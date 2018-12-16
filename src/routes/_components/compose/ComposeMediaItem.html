@@ -1,0 +1,142 @@
+<div class="compose-media">
+  <img src={mediaItem.data.preview_url} {alt} />
+  <div class="compose-media-delete">
+    <button class="compose-media-delete-button"
+            aria-label="Delete {shortName}"
+            on:click="onDeleteMedia()" >
+      <svg class="compose-media-delete-button-svg">
+        <use xlink:href="#fa-times" />
+      </svg>
+    </button>
+  </div>
+  <div class="compose-media-alt">
+    <input id="compose-media-input-{uuid}"
+           type="text"
+           class="compose-media-alt-input"
+           placeholder="Description"
+           bind:value=rawText
+    >
+    <label for="compose-media-input-{uuid}" class="sr-only">
+      Describe {shortName} for the visually impaired
+    </label>
+  </div>
+</div>
+<style>
+  .compose-media {
+    height: 200px;
+    overflow: hidden;
+    flex-direction: column;
+    position: relative;
+    display: flex;
+    background: var(--main-bg);
+  }
+  .compose-media img {
+    object-fit: contain;
+    object-position: center center;
+    flex: 1;
+    height: 100%;
+    width: 100%;
+  }
+  .compose-media-alt {
+    z-index: 10;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+  }
+  .compose-media-alt-input {
+    width: 100%;
+    font-size: 1.2em;
+    background: var(--alt-input-bg);
+    color: var(--body-text-color);
+  }
+  .compose-media-alt-input:focus {
+    background: var(--main-bg);
+  }
+  .compose-media-delete {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: flex;
+    justify-content: flex-end;
+    margin: 2px;
+  }
+  .compose-media-delete-button {
+    padding: 10px;
+    background: none;
+    border: none;
+  }
+  .compose-media-delete-button:hover {
+    background: var(--toast-border);
+  }
+  .compose-media-delete-button-svg {
+    fill: var(--button-text);
+    width: 18px;
+    height: 18px;
+  }
+</style>
+<script>
+  import { store } from '../../_store/store'
+  import { deleteMedia } from '../../_actions/media'
+  import debounce from 'lodash-es/debounce'
+  import { scheduleIdleTask } from '../../_utils/scheduleIdleTask'
+  import { observe } from 'svelte-extras'
+
+  export default {
+    oncreate () {
+      this.setupSyncFromStore()
+      this.setupSyncToStore()
+    },
+    data: () => ({
+      rawText: ''
+    }),
+    computed: {
+      filename: ({ mediaItem }) => mediaItem.file && mediaItem.file.name,
+      alt: ({ filename, mediaItem }) => (
+        // sometimes we no longer have the file, e.g. in a delete and redraft situation,
+        // so fall back to the description if it was provided
+        filename || mediaItem.description || ''
+      ),
+      shortName: ({ filename }) => filename || 'media',
+      uuid: ({ realm, mediaItem }) => `${realm}-${mediaItem.data.id}`
+    },
+    store: () => store,
+    methods: {
+      observe,
+      setupSyncFromStore () {
+        this.observe('media', media => {
+          media = media || []
+          let { index, rawText } = this.get()
+          let text = (media[index] && media[index].description) || ''
+          if (rawText !== text) {
+            this.set({ rawText: text })
+          }
+        })
+      },
+      setupSyncToStore () {
+        const saveStore = debounce(() => scheduleIdleTask(() => this.store.save()), 1000)
+
+        this.observe('rawText', rawText => {
+          let { realm, index, media } = this.get()
+          if (media[index].description === rawText) {
+            return
+          }
+          media[index].description = rawText
+          store.setComposeData(realm, { media })
+          saveStore()
+        }, { init: false })
+      },
+      onDeleteMedia () {
+        let {
+          realm,
+          index
+        } = this.get()
+        deleteMedia(realm, index)
+      }
+    }
+  }
+</script>

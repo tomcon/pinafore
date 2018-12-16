@@ -1,5 +1,4 @@
-@mixin baseTheme() {
-
+:root {
   $deemphasized-color: #666;
 
   --button-primary-bg: #{lighten($main-theme-color, 7%)};
@@ -15,6 +14,7 @@
   --button-bg-hover: #{darken($main-bg-color, 5%)};
 
   --input-border: #{$border-color};
+  --input-bg: #{$main-bg-color};
   --anchor-text: #{$anchor-color};
   --main-bg: #{$main-bg-color};
   --body-bg: #{$body-bg-color};
@@ -93,4 +93,6 @@
   --compose-autosuggest-outline: #{lighten($focus-outline, 5%)};
 
   --compose-button-halo: #{rgba(255, 255, 255, 0.1)};
+
+  --file-drop-mask: #{rgba(255, 255, 255, 0.8)};
 }

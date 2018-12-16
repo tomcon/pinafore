@@ -1,0 +1,127 @@
+<div class="status-header {isStatusInNotification ? 'status-in-notification' : ''} {notification && notification.type === 'follow' ? 'header-is-follow' : ''}">
+  <div class="status-header-avatar {timelineType === 'pinned' ? 'hidden' : ''}">
+    <Avatar {account} size="extra-small"/>
+  </div>
+  <svg class="status-header-svg">
+    <use xlink:href={icon}/>
+  </svg>
+
+  <div class="status-header-content">
+    {#if timelineType === 'pinned'}
+      <span class="status-header-author">
+        Pinned toot
+      </span>
+    {:else}
+      <a href="/accounts/{accountId}"
+         class="status-header-author"
+         title="{'@' + account.acct}"
+         focus-key={focusKey} >
+        <AccountDisplayName {account} />
+      </a>
+    {/if}
+
+    <span class="status-header-action">
+        {#if notification && notification.type === 'reblog'}
+          boosted your status
+        {:elseif notification && notification.type === 'favourite'}
+          favorited your status
+        {:elseif notification && notification.type === 'follow'}
+          followed you
+        {:elseif status && status.reblog}
+          boosted
+        {/if}
+    </span>
+  </div>
+</div>
+<style>
+  .status-header {
+    grid-area: header;
+    margin: 0 10px 5px 5px;
+    display: flex;
+    align-items: center;
+  }
+  .status-header.header-is-follow {
+    margin-bottom: 0; /* standalone, so doesn't need a bottom margin */
+  }
+
+  .status-header-avatar {
+    margin-left: 19px; /* offset for avatar, 48px - 24px - 5px */
+  }
+
+  .status-header-svg {
+    min-width: 18px;
+    margin-left: 20px;
+    width: 18px;
+    height: 18px;
+    fill: var(--deemphasized-text-color);
+  }
+
+  .status-header.status-in-notification .status-header-svg {
+    fill: var(--body-text-color);
+  }
+
+  .status-header-content {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    width: 0;
+  }
+
+  .status-header-author {
+    margin-left: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .status-header-action {
+    margin-left: 0.5ch;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  .status-header-action,
+  .status-header-author,
+  .status-header-author:visited,
+  .status-header-author:hover {
+    color: var(--deemphasized-text-color);
+  }
+
+  .status-in-notification .status-header-action,
+  .status-in-notification .status-header-author,
+  .status-in-notification .status-header-author:visited,
+  .status-in-notification .status-header-author:hover {
+    color: var(--body-text-color);
+  }
+
+  @media (max-width: 767px) {
+    .status-header-svg {
+      margin-left: 10px;
+    }
+  }
+</style>
+<script>
+  import Avatar from '../Avatar.html'
+  import AccountDisplayName from '../profile/AccountDisplayName.html'
+
+  export default {
+    components: {
+      Avatar,
+      AccountDisplayName
+    },
+    computed: {
+      focusKey: ({ uuid }) => `status-header-${uuid}`,
+      icon: ({ notification, status, timelineType }) => {
+        if (timelineType === 'pinned') {
+          return '#fa-thumb-tack'
+        } else if ((notification && notification.type === 'reblog') || (status && status.reblog)) {
+          return '#fa-retweet'
+        } else if (notification && notification.type === 'follow') {
+          return '#fa-user-plus'
+        }
+        return '#fa-star'
+      }
+    }
+  }
+</script>

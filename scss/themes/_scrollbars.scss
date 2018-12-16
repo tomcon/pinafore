@@ -1,0 +1,10 @@
+:root {
+  --scrollbar-face-color: #{$scrollbar-face};
+  --scrollbar-track-color: #{$scrollbar-track};
+  --scrollbar-border-radius: 0;
+  --scrollbar-face-color-hover: #{$scrollbar-face-hover};
+  --scrollbar-face-color-active: #{$scrollbar-face-active};
+  --scrollbar-width: 12px;
+  --scrollbar-height: 12px;
+  --scrollbar-background-color: transparent;
+}

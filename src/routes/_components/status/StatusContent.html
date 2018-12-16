@@ -1,0 +1,119 @@
+<div class={computedClass} ref:node>
+    {@html massagedContent}
+</div>
+<style>
+  .status-content {
+    margin: 10px 10px 10px 5px;
+    grid-area: content;
+    word-wrap: break-word;
+    overflow: hidden;
+    white-space: pre-wrap;
+    font-size: 0.9em;
+    display: none;
+  }
+
+  .status-content.status-in-own-thread {
+    font-size: 1.3em;
+    margin: 20px 10px 20px 5px;
+  }
+
+  .status-content.shown {
+    display: block;
+  }
+
+  :global(.status-content p) {
+    margin: 0 0 20px;
+  }
+
+  :global(.status-content p:first-child) {
+    margin: 0 0 20px;
+  }
+
+  :global(.status-content p:last-child) {
+    margin: 0;
+  }
+
+  .status-content.status-in-notification {
+    color: var(--very-deemphasized-text-color);
+  }
+  :global(.status-content.status-in-notification a, .status-content.status-in-notification a:hover) {
+    color: var(--very-deemphasized-link-color);
+  }
+
+  :global(.status-content .invisible) {
+    /* copied from Mastodon */
+    font-size: 0;
+    line-height: 0;
+    display: inline-block;
+    width: 0;
+    height: 0;
+    position: absolute;
+  }
+
+</style>
+<script>
+  import { mark, stop } from '../../_utils/marks'
+  import { store } from '../../_store/store'
+  import { classname } from '../../_utils/classname'
+  import { massageUserText } from '../../_utils/massageUserText'
+
+  export default {
+    oncreate () {
+      this.hydrateContent()
+    },
+    store: () => store,
+    computed: {
+      computedClass: ({ isStatusInOwnThread, isStatusInNotification, shown }) => {
+        return classname(
+          'status-content',
+          isStatusInOwnThread && 'status-in-own-thread',
+          isStatusInNotification && 'status-in-notification',
+          shown && 'shown'
+        )
+      },
+      content: ({ originalStatus }) => (originalStatus.content || ''),
+      emojis: ({ originalStatus }) => originalStatus.emojis,
+      massagedContent: ({ content, emojis, $autoplayGifs }) => massageUserText(content, emojis, $autoplayGifs)
+    },
+    methods: {
+      hydrateContent () {
+        mark('hydrateContent')
+        let node = this.refs.node
+        let { originalStatus, uuid } = this.get()
+        let count = 0
+        let anchors = node.getElementsByTagName('A')
+        let mentions = originalStatus.mentions
+        let tags = originalStatus.tags
+        for (let i = 0, len = anchors.length; i < len; i++) {
+          let anchor = anchors[i]
+          let href = anchor.getAttribute('href')
+          if (tags && anchor.classList.contains('hashtag')) {
+            for (let j = 0, jLen = tags.length; j < jLen; j++) {
+              let tag = tags[j]
+              if (href.endsWith(`/tags/${tag.name}`)) {
+                anchor.setAttribute('href', `/tags/${tag.name}`)
+                anchor.setAttribute('focus-key', `status-content-link-${uuid}-${++count}`)
+                anchor.removeAttribute('target')
+                anchor.removeAttribute('rel')
+              }
+            }
+          } else if (mentions && anchor.classList.contains('mention')) {
+            for (let j = 0, jLen = mentions.length; j < jLen; j++) {
+              let mention = mentions[j]
+              if (href === mention.url) {
+                anchor.setAttribute('href', `/accounts/${mention.id}`)
+                anchor.setAttribute('title', `@${mention.acct}`)
+                anchor.setAttribute('focus-key', `status-content-link-${uuid}-${++count}`)
+                anchor.removeAttribute('target')
+                anchor.removeAttribute('rel')
+              }
+            }
+          } else if (anchor.getAttribute('rel') === 'nofollow noopener') {
+            anchor.setAttribute('title', href)
+          }
+        }
+        stop('hydrateContent')
+      }
+    }
+  }
+</script>

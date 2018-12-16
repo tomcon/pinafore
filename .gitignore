@@ -1,10 +1,9 @@
 .DS_Store
 node_modules
-.sapper
-yarn.lock
-templates/.*
-assets/*.css
+/__sapper__
 /mastodon
-mastodon.log
-assets/robots.txt
+/mastodon.log
+/static/*.css
+/static/robots.txt
+/static/inline-script.js.map
 /inline-script-checksum.json

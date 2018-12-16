@@ -1,0 +1,56 @@
+<span class="compose-box-length {overLimit ? 'over-char-limit' : ''}"
+      aria-label={lengthLabel}>
+      {lengthToDisplayDeferred}
+    </span>
+<style>
+  .compose-box-length {
+    grid-area: length;
+    justify-self: right;
+    color: var(--main-theme-color);
+    font-size: 1.3em;
+    align-self: center;
+  }
+
+  .compose-box-length.over-char-limit {
+    color: var(--warning-color);
+  }
+</style>
+<script>
+  import { mark, stop } from '../../_utils/marks'
+  import { store } from '../../_store/store'
+  import { scheduleIdleTask } from '../../_utils/scheduleIdleTask'
+  import { observe } from 'svelte-extras'
+
+  export default {
+    oncreate () {
+      let { lengthToDisplay } = this.get()
+      this.set({ lengthToDisplayDeferred: lengthToDisplay })
+      // perf improvement for keyboard input latency
+      this.observe('lengthToDisplay', () => {
+        scheduleIdleTask(() => {
+          mark('set lengthToDisplayDeferred')
+          let { lengthToDisplay } = this.get()
+          this.set({ lengthToDisplayDeferred: lengthToDisplay })
+          stop('set lengthToDisplayDeferred')
+        })
+      }, { init: false })
+    },
+    data: () => ({
+      lengthToDisplayDeferred: 0
+    }),
+    store: () => store,
+    computed: {
+      lengthToDisplay: ({ length, $maxStatusChars }) => $maxStatusChars - length,
+      lengthLabel: ({ overLimit, lengthToDisplayDeferred }) => {
+        if (overLimit) {
+          return `${lengthToDisplayDeferred} characters over limit`
+        } else {
+          return `${lengthToDisplayDeferred} characters remaining`
+        }
+      }
+    },
+    methods: {
+      observe
+    }
+  }
+</script>
